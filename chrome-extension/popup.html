@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="light dark">
+  <title>Local Text Notes</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font: 14px/1.45 Inter, system-ui, sans-serif;
+      --paper: #fffefa;
+      --ink: #292820;
+      --muted: #605e52;
+      --line: #ded8c9;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --paper: #24231f; --ink: #f6f0e3; --muted: #c3bbab; --line: #514d43; }
+    }
+    body { width: 264px; margin: 0; padding: 16px; color: var(--ink); background: var(--paper); }
+    h1 { margin: 0; font-size: 17px; }
+    p { margin: 5px 0 0; color: var(--muted); overflow-wrap: anywhere; }
+    #site { color: var(--ink); font-weight: 600; }
+    #status { min-height: 2.9em; margin: 12px 0; }
+    button {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      color: var(--ink);
+      font: 600 14px/1.45 Inter, system-ui, sans-serif;
+      cursor: pointer;
+    }
+    button[data-enable] { background: #efcf6a; border-color: #efcf6a; color: #282112; }
+    button:disabled { cursor: default; opacity: .6; }
+    button:focus-visible { outline: 2px solid #a87922; outline-offset: 2px; }
+  </style>
+  <script defer src="sites.js"></script>
+  <script defer src="popup.js"></script>
+</head>
+<body>
+  <h1>Local Text Notes</h1>
+  <p id="site" hidden></p>
+  <p id="status" role="status">Checking this page…</p>
+  <button type="button" hidden></button>
+</body>
+</html>
