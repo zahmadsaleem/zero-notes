@@ -1,5 +1,7 @@
 /* Shared by the service worker, toolbar popup, and content scripts. */
 globalThis.LocalTextNotesSites = (() => {
+  const noteKeyPrefix = "notes:";
+
   function parseUrl(value) {
     try {
       return new URL(value);
@@ -33,12 +35,12 @@ globalThis.LocalTextNotesSites = (() => {
   }
 
   function noteKey(url) {
-    return `notes:${url}`;
+    return `${noteKeyPrefix}${url}`;
   }
 
   function noteRecord(value) {
     return value || { revision: 0, notes: [] };
   }
 
-  return { siteFor, pageUrl, noteKey, noteRecord, siteKey: "enabledSites" };
+  return { siteFor, pageUrl, noteKey, noteKeyPrefix, noteRecord, siteKey: "enabledSites" };
 })();

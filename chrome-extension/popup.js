@@ -1,8 +1,43 @@
-const { siteFor, siteKey } = LocalTextNotesSites;
+const { noteKeyPrefix, siteFor, siteKey } = LocalTextNotesSites;
 const siteLabel = document.querySelector("#site");
 const status = document.querySelector("#status");
-const button = document.querySelector("button");
+const button = document.querySelector("#site-toggle");
+const downloadButton = document.querySelector("#download");
 let enabled = false;
+
+async function downloadNotes(site) {
+  downloadButton.disabled = true;
+  try {
+    const stored = await chrome.storage.local.get(null);
+    const pages = [];
+    for (const [key, record] of Object.entries(stored)) {
+      if (!key.startsWith(noteKeyPrefix) || !Array.isArray(record?.notes) || !record.notes.length) continue;
+      const url = key.slice(noteKeyPrefix.length);
+      if (siteFor(url)?.id === site.id) pages.push({ url, notes: record.notes });
+    }
+    pages.sort((a, b) => a.url.localeCompare(b.url));
+
+    const json = JSON.stringify({ site: site.id, pages }, null, 2) + "\n";
+    const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+    const name = site.id === "file:///" ? "local-files" : site.label.replace(/[^a-z0-9.-]+/gi, "-");
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `zero-notes-${name}.json`;
+    link.hidden = true;
+    document.body.append(link);
+    try {
+      link.click();
+      status.textContent = "Download started.";
+    } finally {
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    }
+  } catch {
+    status.textContent = "Could not download notes. Try again.";
+  } finally {
+    downloadButton.disabled = false;
+  }
+}
 
 async function start() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -15,6 +50,8 @@ async function start() {
   const isFile = site.id === "file:///";
   siteLabel.textContent = site.label;
   siteLabel.hidden = false;
+  downloadButton.addEventListener("click", () => downloadNotes(site));
+  downloadButton.hidden = false;
   if (isFile && !(await chrome.extension.isAllowedFileSchemeAccess())) {
     status.textContent = 'Turn on “Allow access to file URLs” in the extension’s Chrome settings.';
     return;

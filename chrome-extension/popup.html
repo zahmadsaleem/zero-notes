@@ -17,12 +17,13 @@
       :root { --paper: #24231f; --ink: #f6f0e3; --muted: #c3bbab; --line: #514d43; }
     }
     body { width: 264px; margin: 0; padding: 16px; color: var(--ink); background: var(--paper); }
-    h1 { margin: 0; font-size: 17px; }
+    h1 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 17px; }
     p { margin: 5px 0 0; color: var(--muted); overflow-wrap: anywhere; }
     #site { color: var(--ink); font-weight: 600; }
     #status { min-height: 2.9em; margin: 12px 0; }
+    .actions { display: flex; gap: 8px; }
+    #site-toggle { flex: 1; }
     button {
-      width: 100%;
       padding: 8px 12px;
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -39,9 +40,15 @@
   <script defer src="popup.js"></script>
 </head>
 <body>
-  <h1>Local Text Notes</h1>
+  <h1>
+    <img src="icons/icon-24.png" srcset="icons/icon-48.png 2x" width="24" height="24" alt="">
+    Local Text Notes
+  </h1>
   <p id="site" hidden></p>
   <p id="status" role="status">Checking this page…</p>
-  <button type="button" hidden></button>
+  <div class="actions">
+    <button id="site-toggle" type="button" hidden></button>
+    <button id="download" type="button" hidden>Download</button>
+  </div>
 </body>
 </html>
