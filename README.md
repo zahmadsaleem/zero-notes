@@ -1,6 +1,10 @@
-# Zero Notes
+# <img src="chrome-extension/icons/icon-48.png" width="32" height="32" alt=""> Zero Notes
 
 Highlight text and leave comments. Notes stay in your browser.
+
+[Try the live demo](https://madsolame.com/zero-notes/)
+
+![Selecting a passage, posting a comment, and opening the Notes list](assets/demo.gif)
 
 ## Chrome extension
 

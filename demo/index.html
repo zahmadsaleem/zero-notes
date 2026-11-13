@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Try Zero Notes by highlighting a passage or adding a comment. Your notes stay in your browser.">
+  <link rel="icon" href="./logo.png" type="image/png">
+  <title>Zero Notes Demo</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --page: #faf8f2;
+      --ink: #272820;
+      --muted: #605e51;
+      --line: #d9d2be;
+      --accent: #755712;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --page: #20201c;
+        --ink: #f1eee1;
+        --muted: #c5bdab;
+        --line: #4a463b;
+        --accent: #ecd07d;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      background: var(--page);
+      color: var(--ink);
+      margin: 0;
+      font: 16px/1.55 Inter, system-ui, sans-serif;
+    }
+    main {
+      width: min(100% - 48px, 690px);
+      margin-inline: auto;
+      padding: clamp(36px, 8vw, 100px) 0 100px;
+    }
+    header {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: clamp(20px, 4vw, 34px);
+      margin-bottom: 30px;
+    }
+    h1, h2 { font-family: "Instrument Serif", Georgia, serif; font-weight: normal; }
+    h1 {
+      display: flex;
+      align-items: center;
+      gap: .2em;
+      font-size: clamp(42px, 9vw, 76px);
+      line-height: 1.03;
+      letter-spacing: -.055em;
+      margin: 0 0 12px;
+    }
+    h1 img { width: .85em; height: .85em; }
+    h2 { font-size: 32px; letter-spacing: -.025em; line-height: 1.15; margin: 0 0 14px; }
+    p { margin: 0 0 18px; }
+    header p { max-width: 53ch; color: var(--muted); margin: 0; }
+    article {
+      font: 20px/1.65 "Crimson Text", Georgia, serif;
+      margin-bottom: 40px;
+    }
+    section + section { margin-top: 30px; }
+    code { font: .88em ui-monospace, monospace; }
+    .embed {
+      border-top: 1px solid var(--line);
+      padding-top: 22px;
+    }
+    .embed h2 { font: 600 16px/1.4 Inter, system-ui, sans-serif; letter-spacing: 0; }
+    pre {
+      border: 1px solid var(--line);
+      padding: 12px 14px;
+      border-radius: 7px;
+      margin: 0;
+      overflow: auto;
+      color: var(--accent);
+    }
+  </style>
+  <script defer src="./local-text-notes.js" data-scope="article"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <h1><img src="./logo.png" width="48" height="48" alt="">Zero Notes</h1>
+      <p>Select a passage below and choose <strong>Highlight</strong> or <strong>Comment</strong>. Open <strong>Notes</strong> to revisit your passages and manage comments.</p>
+    </header>
+    <article aria-labelledby="article-title">
+      <section>
+        <h2 id="article-title">Reading the tide</h2>
+        <p>At low tide, the path around the headland reappears. It’s narrow enough that two people walking in opposite directions have to take turns on the stepping stones.</p>
+        <p>The tide table gives you a starting point. Wind can push water into the bay, and the level on the rocks can differ from the level at the harbor gauge. Check the water on your way out, and keep an eye on it as you walk.</p>
+      </section>
+      <section>
+        <h2>On the way back</h2>
+        <p>Leave enough time to return by the same route. A quiet cove can fill quickly after the turn, especially where the shore pinches between two ridges.</p>
+        <p>The tide table gives you a starting point. A line of wet seaweed gives you another. When the lower stones disappear, use the path above the beach.</p>
+      </section>
+    </article>
+    <div class="embed">
+      <h2>Add it to your page</h2>
+      <pre><code>&lt;script defer src="./local-text-notes.js"&gt;&lt;/script&gt;</code></pre>
+    </div>
+  </main>
+</body>
+</html>
