@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - demo/**
+      - demo.html
       - local-text-notes.js
       - chrome-extension/icons/icon-48.png
       - .github/workflows/pages.yml
@@ -30,9 +30,10 @@ jobs:
       - uses: actions/configure-pages@v5
       - name: Assemble demo
         run: |
-          mkdir _site
-          cp demo/index.html local-text-notes.js _site/
-          cp chrome-extension/icons/icon-48.png _site/logo.png
+          mkdir -p _site/chrome-extension/icons
+          cp demo.html _site/index.html
+          cp local-text-notes.js _site/
+          cp chrome-extension/icons/icon-48.png _site/chrome-extension/icons/
       - uses: actions/upload-pages-artifact@v4
         with:
           path: _site

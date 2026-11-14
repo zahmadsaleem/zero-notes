@@ -3,7 +3,7 @@
   "use strict";
 
   const script = document.currentScript;
-  const excluded = "script, style, noscript, template, [hidden], local-text-notes";
+  const excluded = "script, style, noscript, template, [hidden], local-text-notes, local-text-notes-inline";
   const annotationExcluded = '[data-local-notes-ignore], input, textarea, select, button, [contenteditable]:not([contenteditable="false"])';
   const extensionStateEvent = "local-text-notes-extension-state";
   const extensionSelector = "local-text-notes[data-extension]";
@@ -284,6 +284,60 @@
     return control;
   }
 
+  const logoSource = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAGKADAAQAAAABAAAAGAAAAADiNXWtAAADkklEQVRIDe1UTWxUVRT+7n3vzUz7OsUG6UixrU3DTyJKYiHEFhJDwASjkQ2JKxNj1IVxZeKCBNkQYkwMC9gRd6yILlgQWBirIaht0oCoiUGkqEzpdAi10+kwb9579/Kd9wrMTJvg0gUneS/33XPu953znXMf8MQeo4B6jP8/ua0d8XC7Yz1CbIKnCwjjK2rw0m9yeFUCOw4X68c6kNNdMJl10HqYzwiUMwCrPcCtc92ANVkgLsA2+mHCfjhRN7iDangTJt6mNk5U3Acp2hu7X0S28z3E3hYotwDoNeTPkyqPLtetlSNc/X0JsCFe2GTgF5hb0CB+xCcmjAFCy7UgqgK87FouHhHA2s/QGe9HjYcMAx88GeDsmXl8fKyIm7cCOY3nns3gi0N9eHN/D9BgbLOlnw6CUGqBlpe1Bx2+BrBYB+okaIRAxMy0wfSf9/DhkVv4eybEru157NqRxz+zEfdmMH2DhO4qKmt4yCqyLxOgXO5gN/JSZYt5Cl+fX0BxNsTWzTmc+3II504NYbg/i2IpxFcXFgDGtJhUkNGKWMOyn1SAhQY1x9OsQvYeWWQx8XONJQK7R3z4fRl8P1llBQ1kCDwpPsasMOLzTK/spwQgm6c6WypgjAksbpcpF9cDGzKo3Ynw6fESBkmkCSI+iVl9FlWiR0qgKY+wtlnI7Or1FKCn28HnJ2bxzDoX77+1lgNkEp/ErDAZEIt52U/HVGnO9IowKHIqpiByfHOpismrtaQP3/1YTdQUn8SsMCHVmJH9tAJjlpKxbIv0CNztaziOYkP/xdsHerD5JR9zdzlhxBCfxLSYfEY2RkOXZD8lgBO06C8eAqisxlB/BkFg8PzGHD75gH3jZbo2zfGkX3wS01J9yhcgpxabCAwj5bPNuLdvLJ/oMF+JMfVrDRfHKxj/qQrN+d87Kr62MySmKYRRknzaA6u6QBkQp96HR9jI1/etwSs7fXz7QxWvvTuduCqLMfYQ/I1X+Tdpv8lCaNlbZRPq5SazB3ZZrYfoXHDQfOp8+vggjp4sYeLyUjJsY7wThz/qhf8UMUIG6abERLE6LqoyigKVsNjro70ch1/Q5fQmP6ykAULAg9QfsZGu1qpL8Zw19k7eVxWSz0RhPEcE3jYdkdlojUArXUTNXFDbp3jNmxS0f4y+bBzzjgrNBhvbKl1/Ef6ajc11F6YE37uLXLSIvql7zKopZYF5Yv9nBe4DI+9lle3hiZ0AAAAASUVORK5CYII=";
+  const paths = {
+    close: "M4 4l8 8m0-8-8 8",
+    chevron: "m6 3.5 4 4.5-4 4.5",
+    comment: "M2.5 3.5h11v7H8l-3 2.5v-2.5H2.5z",
+    highlight: "m4 9 3 3m-3-3 6-6 3 3-6 6H4Zm-2 5h9",
+    resolve: "m5 8 2 2 4-4",
+    reopen: "M5.3 7a2.8 2.8 0 1 1 .6 3.2m-.6-5v2h2",
+    delete: "m6 6 4 4m0-4-4 4",
+    jump: "M9 3.5h3.5V7m0-3.5-6 6m5.5-.5v3.5H3.5V4H7",
+    link: "m6.5 9.5 3-3M6 6 3.5 8.5a2.8 2.8 0 0 0 4 4L10 10M6 6l2.5-2.5a2.8 2.8 0 0 1 4 4L10 10",
+    trash: "M3 4.5h10m-6.5 0V3h3v1.5M4.5 5l.7 8h5.6l.7-8m-5 2.3v3.4m3-3.4v3.4"
+  };
+
+  function icon(name) {
+    const namespace = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(namespace, "svg");
+    svg.setAttribute("viewBox", "0 0 16 16");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "1.35");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    if (["resolve", "reopen", "delete"].includes(name)) {
+      const circle = document.createElementNS(namespace, "circle");
+      circle.setAttribute("cx", "8");
+      circle.setAttribute("cy", "8");
+      circle.setAttribute("r", "6.3");
+      svg.append(circle);
+    }
+    const path = document.createElementNS(namespace, "path");
+    path.setAttribute("d", paths[name]);
+    svg.append(path);
+    return svg;
+  }
+
+  function iconButton(label, glyph, action, key) {
+    const control = button("", action, "icon", key || label);
+    control.setAttribute("aria-label", label);
+    control.title = label;
+    control.append(icon(glyph));
+    return control;
+  }
+
+  function logo(size) {
+    const image = element("img", "logo");
+    image.width = size;
+    image.height = size;
+    image.alt = "";
+    image.src = logoSource;
+    return image;
+  }
+
   function makeStyle(css) {
     const style = element("style");
     if (script?.nonce) style.nonce = script.nonce;
@@ -330,14 +384,33 @@
     const prefix = extensionStorage ? "local-text-notes-extension" : "local-text-notes";
     const markName = `${prefix}-mark`;
     const commentName = `${prefix}-comment`;
-    const focusName = `${prefix}-focus`;
+    const activeName = `${prefix}-active`;
+    const compact = matchMedia("(max-width: 760px)");
+    const railAttribute = "data-local-text-notes-rail";
+    const root = document.documentElement;
+    const cards = new Map();
+    const drafts = new Map();
     const host = element("local-text-notes");
     if (extensionStorage) host.setAttribute("data-extension", "");
     const ui = host.attachShadow({ mode: extensionStorage ? "closed" : "open" });
-    const panel = element("section", "panel");
+    const inline = element("local-text-notes-inline");
+    const inlineRoot = inline.attachShadow({ mode: extensionStorage ? "closed" : "open" });
+    const panel = element("aside", "panel");
     panel.id = "notes-panel";
     panel.setAttribute("aria-labelledby", "notes-title");
     panel.hidden = true;
+    const heading = element("h2", "", "Notes");
+    heading.id = "notes-title";
+    heading.tabIndex = -1;
+    heading.dataset.focusKey = "title";
+    const headingCount = element("span", "count");
+    const header = element("header");
+    header.append(logo(24), heading, headingCount, iconButton("Hide notes", "close", close));
+    const notice = element("div");
+    const railViewport = element("div", "rail-scroll");
+    const track = element("div", "rail-track");
+    railViewport.append(track);
+    panel.append(header, notice, railViewport);
     const toolbar = element("div", "toolbar");
     toolbar.setAttribute("role", "group");
     toolbar.setAttribute("aria-label", "Mark up selected text");
@@ -345,7 +418,9 @@
     const status = element("div", "status");
     status.setAttribute("role", "status");
     status.hidden = true;
-    const launcher = button("Notes", () => panel.hidden ? show("all") : close(), "launcher");
+    const launcherLabel = element("span", "", "Show notes");
+    const launcher = button("", () => open ? close() : show("all"), "launcher");
+    launcher.append(logo(20), launcherLabel);
     launcher.setAttribute("aria-controls", panel.id);
     launcher.setAttribute("aria-expanded", "false");
     let notes = [];
@@ -354,7 +429,11 @@
     let attached = new Map();
     let view = "all";
     let pending = null;
-    let draft = "";
+    let open = false;
+    let resolved = false;
+    let layoutFrame = 0;
+    let revealFrame = 0;
+    let lastScroll;
     let removing = false;
     let busy = false;
     let readVersion = 0;
@@ -363,7 +442,6 @@
     let selectionFrame = 0;
     let refreshTimer = 0;
     let statusTimer = 0;
-    let flashTimer = 0;
     let selection = null;
 
     function validNotes(stored) {
@@ -541,41 +619,44 @@
     }
 
     function show(nextView, anchor = null, focus = "title") {
+      if (view !== nextView || anchor) {
+        if (nextView === "new") drafts.delete("new");
+        resolved = false;
+        removing = false;
+      }
+      open = true;
       view = nextView;
       pending = anchor;
-      draft = "";
-      removing = false;
-      panel.hidden = false;
-      launcher.setAttribute("aria-expanded", "true");
-      render(focus);
+      render(focus, true);
     }
 
     function close() {
-      panel.hidden = true;
-      launcher.setAttribute("aria-expanded", "false");
-      panel.replaceChildren();
       view = "all";
       pending = null;
-      draft = "";
       removing = false;
+      resolved = false;
+      open = false;
+      drafts.delete("new");
+      render();
       launcher.focus({ preventScroll: true });
+    }
+
+    function collapse(noteId) {
+      if (panel.hidden) {
+        close();
+        return;
+      }
+      show("all", null, `note-${noteId}`);
     }
 
     function jump(note) {
       const match = attached.get(note.id);
       if (!match) return;
-      close();
       const parent = match.range.startContainer.parentElement;
       parent.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
       const rect = match.range.getClientRects()[0];
       if (rect) window.scrollBy({ top: rect.top - window.innerHeight / 2, behavior: "instant" });
-      if (canHighlight) {
-        const highlight = new Highlight(match.range);
-        highlight.priority = 2;
-        CSS.highlights.set(focusName, highlight);
-        clearTimeout(flashTimer);
-        flashTimer = setTimeout(() => CSS.highlights.delete(focusName), 1100);
-      }
+      queueLayout();
     }
 
     async function copyLink(note) {
@@ -595,13 +676,14 @@
         await navigator.clipboard.writeText(url.href);
         announce("Text link copied.");
       } catch {
-        const existing = panel.querySelector(".copy-field");
-        existing?.remove();
+        const thread = cards.get(note.id)?.querySelector(".thread");
+        if (!thread) return;
+        thread.querySelector(".copy-field")?.remove();
         const field = element("input", "copy-field");
         field.readOnly = true;
         field.value = url.href;
         field.setAttribute("aria-label", "Text link to copy");
-        panel.append(field);
+        thread.querySelector(".thread-tools").after(field);
         field.focus();
         field.select();
       }
@@ -609,25 +691,36 @@
 
     async function postComment(event) {
       event.preventDefault();
-      const body = draft.trim();
-      if (!body) return;
       const active = view;
+      const draft = drafts.get(active);
+      const body = draft?.trim();
+      if (!body) return;
       const anchor = pending;
-      let noteId = active;
+      const comment = { id: id(), body, resolved: false };
+      let noteId;
       const saved = await change(items => {
         const note = anchor ? matchingNote(items, anchor) : items.find(item => item.id === active);
-        const comment = { id: id(), body, resolved: false };
-        noteId = note?.id || id();
+        noteId = note?.id;
         if (!note && !anchor) return items;
-        if (!note) return [{ id: noteId, anchor, comments: [comment] }, ...items];
+        if (!note) {
+          noteId = id();
+          return [{ id: noteId, anchor, comments: [comment] }, ...items];
+        }
         return items.map(item => item.id === noteId ? { ...item, comments: [...item.comments, comment] } : item);
       });
       if (!saved) return;
-      if (!panel.hidden && active === view) show(noteId, null, "draft");
-      else render();
+      if (drafts.get(active) === draft) drafts.delete(active);
+      if (open && active === view && anchor === pending && noteId) {
+        pending = null;
+        view = noteId;
+        resolved = false;
+        render("draft");
+        const list = cards.get(noteId)?.querySelector(".comment-list");
+        if (list) list.scrollTop = list.scrollHeight;
+      } else render();
     }
 
-    async function updateComment(noteId, commentId, action) {
+    async function updateComment(noteId, commentId, action, nextId) {
       const saved = await change(items => items.map(note => {
         if (note.id !== noteId) return note;
         const comments = action === "delete"
@@ -635,99 +728,295 @@
           : note.comments.map(comment => comment.id === commentId ? { ...comment, resolved: !comment.resolved } : comment);
         return { ...note, comments };
       }));
-      if (saved) render(action === "delete" ? "draft" : `resolve-${commentId}`);
+      if (saved) render(view === noteId && open ? nextId ? `${action}-${nextId}` : "draft" : undefined);
     }
 
-    function render(focus) {
-      launcher.textContent = notes.length ? `Notes · ${notes.length}` : "Notes";
-      if (panel.hidden) return;
-      const focused = ui.activeElement;
-      focus ??= focused?.dataset.focusKey;
-      const caret = focused?.tagName === "TEXTAREA" ? [focused.selectionStart, focused.selectionEnd] : null;
-      const scroll = panel.scrollTop;
-      const note = notes.find(item => item.id === view);
-      const anchor = note?.anchor || pending;
-      const heading = element("h2", "", anchor ? "Note" : "Notes");
-      heading.id = "notes-title";
-      heading.tabIndex = -1;
-      heading.dataset.focusKey = "title";
-      const header = element("header");
-      if (anchor) header.append(button("All notes", () => show("all"), "quiet"));
-      header.append(heading, button("Close", close, "quiet"));
-      panel.replaceChildren(header);
+    function passage(id) {
+      if (id !== "new") return attached.get(id);
+      index ??= indexText(scope, true);
+      const match = pending && locate(index, pending);
+      if (match) return { ...match, range: rangeFor(index, match) };
+    }
 
-      if (!persistent) panel.append(element("p", "notice", "Browser storage is unavailable. Changes last until you reload."));
-      if (!canHighlight) panel.append(element("p", "notice", "This browser can save notes but can’t paint highlights."));
-      if (!anchor) {
-        if (!notes.length) panel.append(element("p", "empty", "Select text on the page to add a highlight or comment."));
-        for (const item of notes) {
-          const row = button("", () => show(item.id), "note-row", item.id);
-          const open = item.comments.filter(comment => !comment.resolved).length;
-          const resolved = item.comments.length - open;
-          const meta = [open && `${open} open`, resolved && `${resolved} resolved`].filter(Boolean).join(" · ") || "Highlight";
-          row.append(element("span", "excerpt", item.anchor.exact),
-            element("span", "meta", attached.has(item.id) ? meta : `${meta} · Text unavailable`));
-          panel.append(row);
-        }
+    function inlineTarget(match) {
+      if (!compact.matches || !match) return null;
+      const end = match.range.endContainer;
+      const parent = end.nodeType === Node.ELEMENT_NODE ? end : end.parentElement;
+      const block = parent?.closest("p, h1, h2, h3, h4, h5, h6, blockquote, pre");
+      if (!block || !scope.contains(block) || block.closest("table, [contenteditable]")) return null;
+      const container = block.parentElement;
+      if (container && /^(block|flow-root|list-item)$/u.test(getComputedStyle(container).display)) return block;
+      return null;
+    }
+
+    function render(focus, reveal = false) {
+      launcherLabel.textContent = notes.length ? `Show notes · ${notes.length}` : "Show notes";
+      const focused = inlineRoot.activeElement || ui.activeElement;
+      focus ??= focused?.dataset.focusKey;
+      const previous = cards.get(view);
+      const commentScroll = previous?.querySelector(".comment-list")?.scrollTop || 0;
+      const caret = focused?.tagName === "TEXTAREA" ? [focused.selectionStart, focused.selectionEnd] : null;
+      const current = notes.find(note => note.id === view);
+      const selected = current || (pending && { id: "new", anchor: pending, comments: [] });
+      const match = open && selected ? passage(selected.id) : null;
+      const target = inlineTarget(match);
+      paintActive(open && selected, match);
+      cards.clear();
+      inlineRoot.querySelector(".note")?.remove();
+      if (target) {
+        if (target.nextElementSibling !== inline) target.after(inline);
+      } else inline.remove();
+      panel.hidden = !open || Boolean(target);
+      root.toggleAttribute(railAttribute, !panel.hidden && !compact.matches);
+      if (panel.hidden) lastScroll = undefined;
+      launcher.hidden = open;
+      launcher.setAttribute("aria-expanded", String(open));
+      notice.replaceChildren();
+      track.replaceChildren();
+      if (!open) return;
+
+      if (!persistent) notice.append(element("p", "notice", "Changes last until you reload."));
+      if (!canHighlight) notice.append(element("p", "notice", "This browser can save notes but can’t paint highlights."));
+      headingCount.textContent = notes.length || "";
+      if (target) {
+        inlineRoot.append(noteCard(selected, true));
       } else {
-        panel.append(element("blockquote", "", anchor.exact));
-        if (note) {
-          const actions = element("div", "actions");
-          if (attached.has(note.id)) {
-            actions.append(button("Jump to text", () => jump(note)), button("Copy text link", () => copyLink(note)));
-          } else {
-            panel.append(element("p", "notice", "The original text could not be located on this page."));
+        const ordered = selected?.id === "new" ? [...notes, selected] : [...notes];
+        ordered.sort((a, b) => (passage(a.id)?.from ?? Infinity) - (passage(b.id)?.from ?? Infinity) || 0);
+        if (!ordered.length) track.append(element("p", "notice", "Select text on the page to add a highlight or comment."));
+        for (const note of ordered) track.append(noteCard(note, note.id === view));
+      }
+      const list = cards.get(view)?.querySelector(".comment-list");
+      if (list) list.scrollTop = commentScroll;
+      queueLayout();
+      const surface = target ? inlineRoot : panel;
+      const control = Array.from(surface.querySelectorAll("[data-focus-key]"))
+        .find(item => item.dataset.focusKey === focus)
+        || (target ? cards.get(view).querySelector(".disclosure") : focus && heading);
+      control?.focus({ preventScroll: true });
+      if (control?.tagName === "TEXTAREA" && caret) control.setSelectionRange(...caret);
+      if (reveal) {
+        cancelAnimationFrame(revealFrame);
+        revealFrame = requestAnimationFrame(() => {
+          const card = cards.get(view);
+          if (target) control?.scrollIntoView({ block: "nearest" });
+          else if (card) {
+            const visiblePart = Math.min(card.offsetHeight, railViewport.clientHeight);
+            if (card.offsetTop < railViewport.scrollTop || card.offsetTop + visiblePart > railViewport.scrollTop + railViewport.clientHeight) {
+              railViewport.scrollTop = card.offsetTop;
+            }
           }
-          if (removing) {
-            actions.append(
-              button(note.comments.length ? "Delete note and comments" : "Delete highlight", async () => {
-                if (await change(items => items.filter(item => item.id !== note.id))) show("all");
-              }, "danger", "confirm"),
-              button("Cancel", () => { removing = false; render("remove"); })
-            );
-          } else {
-            actions.append(button(note.comments.length ? "Remove note" : "Remove highlight",
-              () => { removing = true; render("confirm"); }, "quiet", "remove"));
-          }
-          panel.append(actions);
-          for (const comment of note.comments) {
-            const item = element("article", "comment");
-            const body = element("p", "", comment.body);
-            const controls = element("div", "actions");
-            if (comment.resolved) controls.append(element("span", "meta", "Resolved"));
-            controls.append(button(comment.resolved ? "Reopen" : "Resolve",
-              () => updateComment(note.id, comment.id, "resolve"), "quiet", `resolve-${comment.id}`),
-            button("Delete", () => updateComment(note.id, comment.id, "delete"), "quiet", `delete-${comment.id}`));
-            item.append(body, controls);
-            panel.append(item);
-          }
+        });
+      }
+    }
+
+    function paintActive(note, match) {
+      if (!canHighlight) return;
+      CSS.highlights.delete(activeName);
+      CSS.highlights.delete(`${activeName}-thread`);
+      if (!note || !match) return;
+      const threaded = note.id === "new" || note.comments.some(comment => !comment.resolved);
+      const highlight = new Highlight(match.range);
+      highlight.priority = 2;
+      CSS.highlights.set(threaded ? `${activeName}-thread` : activeName, highlight);
+    }
+
+    function noteCard(note, expanded) {
+      const card = element("section", "note");
+      cards.set(note.id, card);
+      const match = passage(note.id);
+      if (!match) card.dataset.detached = "";
+      if (expanded) card.dataset.open = "";
+      const heading = element("div", "note-heading");
+      const title = element("h3");
+      const disclosure = button("", () => expanded ? collapse(note.id) : show(note.id, null, `note-${note.id}`), "disclosure", `note-${note.id}`);
+      disclosure.setAttribute("aria-expanded", String(expanded));
+      const threadId = `thread-${cards.size}`;
+      disclosure.setAttribute("aria-controls", threadId);
+      const isHighlight = note.id !== "new" && !note.comments.length;
+      const excerpt = element("span", "excerpt", note.anchor.exact);
+      excerpt.title = note.anchor.exact;
+      const count = element("span", "count");
+      if (isHighlight) {
+        count.textContent = "Highlight";
+      } else {
+        const total = note.comments.length;
+        count.append(icon("comment"), document.createTextNode(total));
+        count.setAttribute("aria-label", `${total} ${total === 1 ? "comment" : "comments"}`);
+      }
+      disclosure.append(icon(isHighlight && !expanded ? "highlight" : "chevron"), excerpt, count);
+      title.append(disclosure);
+      heading.append(title);
+      if (expanded && match && note.id !== "new") {
+        const jumpButton = iconButton("Jump to passage", "jump", () => jump(note));
+        jumpButton.hidden = true;
+        jumpButton.dataset.jump = "";
+        heading.append(jumpButton);
+      }
+      card.append(heading);
+      const thread = element("div", "thread");
+      thread.id = threadId;
+      thread.hidden = !expanded;
+      if (expanded) renderThread(thread, note);
+      card.append(thread);
+      return card;
+    }
+
+    function renderThread(thread, note) {
+      const tools = element("div", "thread-tools");
+      const done = note.comments.filter(comment => comment.resolved).length;
+      if (!done) resolved = false;
+      if (done) {
+        const filters = element("div", "filters");
+        filters.setAttribute("role", "group");
+        filters.setAttribute("aria-label", "Filter comments");
+        for (const isResolved of [false, true]) {
+          const key = isResolved ? "resolved" : "open";
+          const filter = button(isResolved ? `Resolved ${done}` : `Open ${note.comments.length - done}`, () => {
+            resolved = isResolved;
+            render(key);
+            cards.get(note.id).querySelector(".comment-list").scrollTop = 0;
+          }, "filter", key);
+          filter.setAttribute("aria-pressed", String(resolved === isResolved));
+          filters.append(filter);
         }
-        const form = element("form");
-        const input = element("textarea");
-        const label = element("label", "", "Comment");
-        input.id = "note-comment";
-        input.dataset.focusKey = "draft";
-        label.htmlFor = input.id;
-        input.rows = 3;
-        input.required = true;
-        input.spellcheck = false;
-        input.autocomplete = "off";
-        input.value = draft;
-        input.addEventListener("input", () => { draft = input.value; });
-        const submit = element("button", "primary", "Post comment");
-        submit.type = "submit";
-        submit.dataset.focusKey = "post";
-        form.addEventListener("submit", postComment);
-        form.append(label, input, submit);
-        panel.append(form);
+        tools.append(filters);
       }
-      panel.scrollTop = scroll;
-      if (focus) {
-        const target = Array.from(panel.querySelectorAll("[data-focus-key]"))
-          .find(item => item.dataset.focusKey === focus);
-        target?.focus({ preventScroll: focus !== "draft" });
-        if (target?.tagName === "TEXTAREA" && caret) target.setSelectionRange(...caret);
+      if (note.id !== "new") {
+        const actions = element("div", "note-actions");
+        if (attached.has(note.id)) actions.append(iconButton("Copy text link", "link", () => copyLink(note)));
+        actions.append(iconButton(note.comments.length ? "Remove note" : "Remove highlight", "trash", () => {
+          removing = true;
+          render("confirm");
+        }, "remove"));
+        tools.append(actions);
       }
+      if (tools.childElementCount) thread.append(tools);
+      if (note.id !== "new" && !attached.has(note.id)) thread.append(element("p", "notice", "Text unavailable"));
+      if (removing) {
+        const confirm = element("div", "confirm");
+        confirm.append(button(note.comments.length ? "Delete note and comments" : "Delete highlight", async () => {
+          if (!await change(items => items.filter(item => item.id !== note.id))) return;
+          drafts.delete(note.id);
+          if (open && view === note.id) {
+            if (panel.hidden) close();
+            else show("all");
+          } else render();
+        }, "danger", "confirm"), button("Cancel", () => { removing = false; render("remove"); }));
+        thread.append(confirm);
+      }
+      const list = element("div", "comment-list");
+      const comments = note.comments.filter(comment => Boolean(comment.resolved) === resolved);
+      for (const [i, comment] of comments.entries()) {
+        const row = element("article", "comment");
+        const nextId = (comments[i + 1] || comments[i - 1])?.id;
+        const actions = element("div", "comment-actions");
+        actions.append(
+          iconButton(comment.resolved ? "Reopen comment" : "Resolve comment", comment.resolved ? "reopen" : "resolve",
+            () => updateComment(note.id, comment.id, "resolve", nextId), `resolve-${comment.id}`),
+          iconButton("Delete comment", "delete", () => updateComment(note.id, comment.id, "delete", nextId), `delete-${comment.id}`)
+        );
+        row.append(element("p", "", comment.body), actions);
+        list.append(row);
+      }
+      if (!comments.length && done) list.append(element("p", "notice", "No open comments."));
+      if (list.childElementCount) {
+        list.tabIndex = 0;
+        list.setAttribute("aria-label", "Comments");
+      } else list.hidden = true;
+      thread.append(list);
+      const form = element("form", "composer");
+      const input = element("textarea");
+      input.setAttribute("aria-label", "Add a comment");
+      input.placeholder = "Add a comment…";
+      input.dataset.focusKey = "draft";
+      input.rows = 1;
+      input.required = true;
+      input.spellcheck = false;
+      input.autocomplete = "off";
+      input.value = drafts.get(note.id) || "";
+      const submit = element("button", "primary", "Post");
+      submit.type = "submit";
+      submit.dataset.focusKey = "post";
+      submit.disabled = !input.value.trim();
+      input.addEventListener("input", () => {
+        drafts.set(note.id, input.value);
+        submit.disabled = !input.value.trim();
+        queueLayout();
+      });
+      form.addEventListener("submit", postComment);
+      form.append(input, submit);
+      thread.append(form);
+    }
+
+    function passageVisible(range, rects, right, bottom) {
+      let left = 0;
+      let top = 0;
+      let element = range.commonAncestorContainer;
+      if (element.nodeType !== Node.ELEMENT_NODE) element = element.parentElement;
+      for (; element && element !== root; element = element.parentElement) {
+        const { overflowX, overflowY } = getComputedStyle(element);
+        const clipsX = overflowX !== "visible";
+        const clipsY = overflowY !== "visible";
+        if (!clipsX && !clipsY) continue;
+        const rect = element.getBoundingClientRect();
+        if (clipsX) {
+          left = Math.max(left, rect.left);
+          right = Math.min(right, rect.right);
+        }
+        if (clipsY) {
+          top = Math.max(top, rect.top);
+          bottom = Math.min(bottom, rect.bottom);
+        }
+      }
+      return right > left && bottom > top && rects.some(rect =>
+        rect.bottom > top && rect.top < bottom && rect.right > left && rect.left < right);
+    }
+
+    function queueLayout() {
+      if (layoutFrame || panel.hidden) return;
+      layoutFrame = requestAnimationFrame(() => {
+        layoutFrame = 0;
+        if (panel.hidden) return;
+        const headerBottom = railViewport.getBoundingClientRect().top;
+        const bounds = panel.getBoundingClientRect();
+        const right = compact.matches ? innerWidth : bounds.left;
+        const bottom = compact.matches ? bounds.top : innerHeight;
+        const pageScroll = window.scrollY;
+        const entries = [];
+        for (const [id, card] of cards) {
+          const range = passage(id)?.range;
+          const rects = Array.from(range?.getClientRects() || []).filter(rect => rect.width && rect.height);
+          const jumpButton = card.querySelector(".note-heading button[data-jump]");
+          if (jumpButton) jumpButton.hidden = range && passageVisible(range, rects, right, bottom);
+          if (compact.matches) continue;
+          const first = rects[0];
+          const start = first ? Math.round(first.top + first.height / 2 + pageScroll - headerBottom - 20) : 0;
+          entries.push({ id, card, start, height: card.offsetHeight });
+        }
+        if (compact.matches) return;
+        let nextTop = 8;
+        let minimumTop = nextTop;
+        const gap = 6;
+        for (const [i, entry] of entries.entries()) {
+          entry.top = Math.max(entry.start, nextTop);
+          if (entry.id === view && entry.start) {
+            entry.top = Math.max(entry.start, minimumTop);
+            let previousBottom = entry.top;
+            for (let j = i - 1; j >= 0; j--) {
+              const previous = entries[j];
+              previous.top = Math.min(previous.top, previousBottom - previous.height - gap);
+              previousBottom = previous.top;
+            }
+          }
+          nextTop = entry.top + entry.height + gap;
+          minimumTop += entry.height + gap;
+        }
+        for (const {card, top} of entries) card.style.top = `${top}px`;
+        track.style.height = `${Math.max(nextTop, document.documentElement.scrollHeight - innerHeight + railViewport.clientHeight)}px`;
+        if (lastScroll !== pageScroll) railViewport.scrollTop = pageScroll;
+        lastScroll = pageScroll;
+      });
     }
 
     function installStyle(root, css) {
@@ -749,6 +1038,10 @@
     toolbar.append(button("Highlight", saveHighlight), button("Comment", startComment));
     toolbar.addEventListener("mousedown", event => { event.preventDefault(); });
     installStyle(ui, UI_CSS);
+    installStyle(inlineRoot, UI_CSS);
+    installStyle(document, `
+      :root[${railAttribute}] { padding-right: clamp(305px, 32vw, 410px) !important; }
+    `);
     ui.append(toolbar, panel, status, launcher);
     document.body.append(host);
     if (extensionStorage) document.dispatchEvent(new Event(extensionStateEvent));
@@ -756,10 +1049,13 @@
       installStyle(document, `
         ::highlight(${markName}) { background-color: #f2c73e66; }
         ::highlight(${commentName}) { background-color: #f2c73e80; text-decoration: underline #b58a20; }
-        ::highlight(${focusName}) { background-color: #f2c73ebf; }
+        ::highlight(${activeName}) { background-color: #f2c73ebf; }
+        ::highlight(${activeName}-thread) { background-color: #f2c73ebf; text-decoration: underline #b58a20; }
         @media (prefers-color-scheme: dark) {
           ::highlight(${markName}) { background-color: #efb83350; }
           ::highlight(${commentName}) { background-color: #efb83366; text-decoration-color: #e2b444; }
+          ::highlight(${activeName}) { background-color: #efb8338c; }
+          ::highlight(${activeName}-thread) { background-color: #efb8338c; text-decoration-color: #e2b444; }
         }
       `);
     }
@@ -768,8 +1064,17 @@
     updateToolbar();
 
     document.addEventListener("selectionchange", updateToolbar, { signal });
-    window.addEventListener("resize", updateToolbar, { passive: true, signal });
-    window.addEventListener("scroll", updateToolbar, { passive: true, capture: true, signal });
+    compact.addEventListener("change", () => render(), { signal });
+    window.addEventListener("resize", () => { updateToolbar(); queueLayout(); }, { passive: true, signal });
+    window.addEventListener("scroll", event => {
+      if (event.composedPath().some(node => node === host || node === inline)) return;
+      updateToolbar();
+      queueLayout();
+    }, { passive: true, capture: true, signal });
+    const resizeObserver = typeof ResizeObserver === "function" ? new ResizeObserver(queueLayout) : null;
+    resizeObserver?.observe(root);
+    resizeObserver?.observe(scope);
+    resizeObserver?.observe(railViewport);
     document.addEventListener("pointerdown", event => {
       if (event.pointerType === "mouse" && event.button === 0 && !event.composedPath().includes(host)) {
         selecting = true;
@@ -785,12 +1090,16 @@
     window.addEventListener("blur", () => { selecting = false; hideToolbar(); }, { signal });
     document.addEventListener("keydown", event => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
-      if (!panel.hidden && event.composedPath().includes(host)) close();
+      const path = event.composedPath();
+      if (open && (path.includes(host) || path.includes(inline))) {
+        if (view === "all") close();
+        else collapse(view);
+      }
       else if (!toolbar.hidden) hideToolbar();
     }, { signal });
     document.addEventListener("click", event => {
-      if (event.defaultPrevented || event.detail !== 1 || !attached.size || !panel.hidden || !scope.contains(event.target)
-        || event.composedPath().includes(host) || !document.getSelection()?.isCollapsed
+      if (event.defaultPrevented || event.detail !== 1 || !attached.size || !scope.contains(event.target)
+        || event.composedPath().some(node => node === host || node === inline) || !document.getSelection()?.isCollapsed
         || event.target.closest("a, button, input, label, textarea, select, summary, [role], [contenteditable]")) return;
       const point = document.caretPositionFromPoint?.(event.clientX, event.clientY)
         || document.caretRangeFromPoint?.(event.clientX, event.clientY);
@@ -802,12 +1111,14 @@
         if (range.comparePoint(node, offset) !== 0) continue;
         if (Array.from(range.getClientRects()).some(rect => event.clientX >= rect.left && event.clientX <= rect.right
           && event.clientY >= rect.top && event.clientY <= rect.bottom)) {
-          show(noteId);
+          show(noteId, null, `note-${noteId}`);
           return;
         }
       }
     }, { signal });
-    const observer = new MutationObserver(() => {
+    const observer = new MutationObserver(records => {
+      if (records.every(record => record.type === "childList" && [...record.addedNodes, ...record.removedNodes]
+        .every(node => node === inline || node === host))) return;
       index = null;
       clearTimeout(refreshTimer);
       if (!notes.length) return;
@@ -815,6 +1126,11 @@
         const previous = attached;
         paint();
         if (previous.size !== attached.size || Array.from(previous.keys()).some(key => !attached.has(key))) render();
+        else {
+          const selected = notes.find(note => note.id === view);
+          paintActive(open && (selected || (pending && { id: "new" })), passage(view));
+          queueLayout();
+        }
       }, 150);
     });
     observer.observe(scope, {
@@ -826,12 +1142,16 @@
     });
     signal.addEventListener("abort", () => {
       observer.disconnect();
+      resizeObserver?.disconnect();
       cancelAnimationFrame(selectionFrame);
+      cancelAnimationFrame(layoutFrame);
+      cancelAnimationFrame(revealFrame);
+      root.removeAttribute(railAttribute);
+      inline.remove();
       clearTimeout(refreshTimer);
       clearTimeout(statusTimer);
-      clearTimeout(flashTimer);
       if (canHighlight) {
-        for (const name of [markName, commentName, focusName]) CSS.highlights.delete(name);
+        for (const name of [markName, commentName, activeName, `${activeName}-thread`]) CSS.highlights.delete(name);
       }
       host.remove();
       if (extensionStorage) document.dispatchEvent(new Event(extensionStateEvent));
@@ -846,15 +1166,17 @@
       z-index: 2147483647;
       pointer-events: none;
       color-scheme: light dark;
-      --paper: #fffefa;
-      --ink: #292820;
-      --muted: #605e52;
-      --line: #e6e1d4;
-      --hover: #f4f0e4;
+      --paper: #fbfaf7;
+      --rail: #f3f1eb;
+      --ink: #24231f;
+      --muted: #635f55;
+      --line: #dedbd0;
+      --hover: #eeebe1;
+      --rule: #ab771d;
       --accent: #efcf6a;
       --accent-ink: #282112;
       --danger: #a12d26;
-      --shadow: 0 8px 32px #25211226, 0 1px 4px #2521121f;
+      --shadow: 0 4px 16px #25211226;
       color: var(--ink);
       font: 14px/1.45 Inter, system-ui, sans-serif;
       direction: ltr;
@@ -862,14 +1184,24 @@
     }
     @media (prefers-color-scheme: dark) {
       :host {
-        --paper: #24231f;
-        --ink: #f6f0e3;
-        --muted: #c3bbab;
-        --line: #454239;
-        --hover: #37342c;
+        --paper: #262722;
+        --rail: #20211e;
+        --ink: #f0ede3;
+        --muted: #b8b4a6;
+        --line: #3d3e36;
+        --hover: #30312a;
+        --rule: #d4ad58;
         --danger: #ff9b91;
-        --shadow: 0 8px 32px #0007;
+        --shadow: 0 4px 16px #0007;
       }
+    }
+    :host(local-text-notes-inline) {
+      position: relative;
+      inset: auto;
+      z-index: auto;
+      display: block;
+      margin: 0 0 12px;
+      pointer-events: auto;
     }
     *, *::before, *::after { box-sizing: border-box; }
     [hidden] { display: none !important; }
@@ -877,79 +1209,102 @@
     button {
       background: var(--paper);
       border: 1px solid var(--line);
-      border-radius: 7px;
+      border-radius: 6px;
       min-height: 32px;
       padding: 4px 9px;
       cursor: pointer;
     }
     button:hover { background: var(--hover); }
-    :focus-visible { outline: 2px solid #a87922; outline-offset: 2px; }
-    .toolbar, .panel, .status, .launcher {
-      position: absolute;
-      background: var(--paper);
-      border: 1px solid var(--line);
-      border-radius: 11px;
-      box-shadow: var(--shadow);
-    }
+    button:disabled { cursor: default; }
+    :focus-visible { outline: 2px solid var(--rule); outline-offset: -2px; }
+    svg { display: block; width: 16px; height: 16px; flex: none; }
+    .toolbar, .panel, .status, .launcher { position: absolute; background: var(--paper); }
+    .toolbar, .status, .launcher { border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
     .toolbar, .panel, .launcher { pointer-events: auto; }
     .toolbar { display: flex; gap: 4px; padding: 4px; z-index: 2; }
     .toolbar button { border-color: transparent; }
     .toolbar button:first-child { background: var(--accent); color: var(--accent-ink); }
-    .launcher { bottom: max(14px, env(safe-area-inset-bottom)); right: max(14px, env(safe-area-inset-right)); padding: 5px 12px; }
+    .launcher { display: flex; align-items: center; gap: 6px; bottom: max(12px, env(safe-area-inset-bottom)); right: max(12px, env(safe-area-inset-right)); }
+    .logo { object-fit: contain; flex: none; }
     .panel {
-      bottom: calc(max(14px, env(safe-area-inset-bottom)) + 42px);
-      right: max(14px, env(safe-area-inset-right));
-      width: min(350px, calc(100vw - 28px));
-      max-height: min(620px, calc(100dvh - 70px));
-      overflow: auto;
-      overscroll-behavior: contain;
-      padding: 0 14px 14px;
-    }
-    header {
-      position: sticky;
-      top: 0;
+      inset: 0 0 0 auto;
+      width: clamp(305px, 32vw, 410px);
       display: flex;
+      flex-direction: column;
+      background: var(--rail);
+      border-inline-start: 1px solid var(--line);
+    }
+    header { display: flex; align-items: center; gap: 7px; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0; font-size: 14px; }
+    header .count { margin-inline-end: auto; }
+    .rail-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+    .rail-track { position: relative; }
+    .rail-track .note { position: absolute; inset-inline: 0; }
+    .note { overflow: hidden; background: var(--paper); border-block: 1px solid var(--line); }
+    :host(local-text-notes-inline) .note { border: 1px solid var(--line); border-radius: 6px; }
+    .note[data-open] { border-color: var(--rule); }
+    .note-heading { display: flex; align-items: center; }
+    .note-heading h3 { min-width: 0; flex: 1; margin: 0; font-size: 13px; }
+    .disclosure {
+      display: grid;
+      grid-template-columns: 16px minmax(0, 1fr) auto;
       align-items: center;
       gap: 6px;
-      background: var(--paper);
-      border-bottom: 1px solid var(--line);
-      padding: 10px 0;
-      margin-bottom: 12px;
-    }
-    h2 { margin: 0; flex: 1; font-size: 17px; }
-    .quiet { background: transparent; border-color: transparent; }
-    .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-    .meta, .notice, .empty { color: var(--muted); }
-    .meta, .notice { font-size: 12px; }
-    .note-row { display: block; width: 100%; margin-top: 7px; padding: 9px 10px; text-align: left; }
-    .excerpt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
-    .note-row .meta { display: block; margin-top: 3px; }
-    blockquote {
-      margin: 0 0 10px;
-      padding: 5px 9px;
-      border-inline-start: 3px solid var(--accent);
-      max-height: 115px;
-      overflow: auto;
-      overflow-wrap: anywhere;
-    }
-    .comment { margin-top: 12px; padding-top: 9px; border-top: 1px solid var(--line); }
-    .comment p { margin: 0 0 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
-    form { display: grid; gap: 6px; margin-top: 14px; }
-    label { font-weight: 600; }
-    textarea, .copy-field {
-      display: block;
       width: 100%;
-      border-radius: 7px;
-      border: 1px solid var(--line);
-      background: var(--paper);
-      padding: 7px;
+      min-height: 40px;
+      border: 0;
+      border-radius: 0;
+      text-align: start;
     }
-    textarea { resize: vertical; }
-    .copy-field { margin-top: 10px; }
-    .primary { justify-self: start; background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+    .disclosure svg { color: var(--muted); }
+    .note[data-open] .disclosure > svg { transform: rotate(90deg); color: var(--rule); }
+    .excerpt { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .note[data-open] .excerpt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow-wrap: anywhere; }
+    .count { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .count svg { width: 14px; height: 14px; }
+    .icon { display: grid; place-items: center; width: 30px; min-height: 30px; padding: 0; background: transparent; color: var(--muted); border: 0; }
+    .icon:hover { color: var(--ink); }
+    .note-heading > .icon { margin-inline-end: 4px; }
+    .thread { border-top: 1px solid var(--line); }
+    .thread-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 3px 7px 0; }
+    .note-actions, .filters, .confirm { display: flex; align-items: center; gap: 2px; }
+    .note-actions { margin-inline-start: auto; }
+    .filter { min-height: 27px; padding: 2px 6px; border-color: transparent; background: transparent; color: var(--muted); font-size: 12px; }
+    .filter[aria-pressed="true"] { border-color: var(--line); background: var(--hover); color: var(--ink); }
+    .confirm { padding: 4px 8px; flex-wrap: wrap; }
+    .notice { margin: 0; padding: 6px 10px; color: var(--muted); font-size: 12px; }
+    .comment-list { max-height: min(240px, 32dvh); overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+    .comment { padding: 4px 8px 3px 10px; font-size: 13px; }
+    .comment + .comment { border-top: 1px solid var(--line); }
+    .comment p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .comment-actions { display: flex; justify-content: flex-end; }
+    .comment-actions .icon { width: 24px; min-height: 24px; }
+    .comment-actions .icon:first-child svg { translate: 2px 0; }
+    .comment-actions .icon:last-child svg { translate: -2px 0; }
+    .composer { display: flex; align-items: flex-end; gap: 5px; padding: 6px 8px; border-top: 1px solid var(--line); }
+    textarea, .copy-field {
+      min-width: 0;
+      border-radius: 5px;
+      border: 1px solid var(--line);
+      background: var(--rail);
+      padding: 6px 7px;
+      font-size: 13px;
+    }
+    textarea { flex: 1; min-height: 32px; max-height: 84px; resize: none; field-sizing: content; }
+    textarea::placeholder { color: var(--muted); }
+    .copy-field { display: block; width: calc(100% - 16px); margin: 4px 8px; }
+    .primary { background: var(--accent); color: var(--accent-ink); font-size: 13px; font-weight: 650; }
     .primary:hover { background: #f6db8b; }
+    .primary:disabled { background: transparent; color: var(--muted); }
     .danger { color: var(--danger); }
-    .status { bottom: 15px; right: 100px; max-width: calc(100vw - 120px); padding: 6px 10px; font-size: 13px; z-index: 3; }
+    .status { bottom: 52px; right: 12px; max-width: calc(100vw - 24px); padding: 6px 10px; font-size: 13px; z-index: 3; }
+    @media (max-width: 760px) {
+      .panel { inset: auto 0 0; width: auto; max-height: 55dvh; border-inline-start: 0; border-top: 1px solid var(--line); }
+      .rail-track .note { position: static; }
+      .comment-actions .icon { width: 30px; min-height: 30px; }
+      .comment-actions .icon:first-child svg { translate: 3px 0; }
+      .comment-actions .icon:last-child svg { translate: -3px 0; }
+    }
   `;
 
   function initialize() {

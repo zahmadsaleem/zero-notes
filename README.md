@@ -4,7 +4,7 @@ Highlight text and leave comments. Notes stay in your browser.
 
 [Try the live demo](https://madsolame.com/zero-notes/)
 
-![Selecting a passage, posting a comment, and opening the Notes list](assets/demo.gif)
+![Highlighting a passage and opening a comment thread in the sidebar](assets/demo.gif)
 
 ## Chrome extension
 
@@ -39,4 +39,4 @@ Copy `local-text-notes.js` next to your HTML file and add:
 <script defer src="./local-text-notes.js"></script>
 ```
 
-Select text to highlight or comment. Open **Notes** to see your highlights and manage comments.
+Select text to highlight or comment. Choose **Show notes** to see highlights and expand comment threads beside the page.
