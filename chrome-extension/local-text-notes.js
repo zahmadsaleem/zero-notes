@@ -347,8 +347,11 @@
 
   function pageStorage(key, signal) {
     const read = () => JSON.parse(localStorage.getItem(key) || "[]");
+    const modeKey = "local-text-notes:mode";
     return {
       read,
+      readMode: () => localStorage.getItem(modeKey),
+      writeMode: mode => localStorage.setItem(modeKey, mode),
       update(transform) {
         const commit = () => {
           signal.throwIfAborted();
@@ -390,6 +393,7 @@
     const root = document.documentElement;
     const cards = new Map();
     const drafts = new Map();
+    const markers = new Map();
     const host = element("local-text-notes");
     if (extensionStorage) host.setAttribute("data-extension", "");
     const ui = host.attachShadow({ mode: extensionStorage ? "closed" : "open" });
@@ -405,12 +409,19 @@
     heading.dataset.focusKey = "title";
     const headingCount = element("span", "count");
     const header = element("header");
-    header.append(logo(24), heading, headingCount, iconButton("Hide notes", "close", close));
+    const sidebarModes = modeSwitch();
+    header.append(logo(24), heading, headingCount, sidebarModes, iconButton("Hide notes", "close", close));
     const notice = element("div");
     const railViewport = element("div", "rail-scroll");
     const track = element("div", "rail-track");
     railViewport.append(track);
     panel.append(header, notice, railViewport);
+    const indicators = element("nav", "indicators");
+    indicators.setAttribute("aria-label", "Comment locations");
+    indicators.hidden = true;
+    const viewportMarker = element("span", "viewport-marker");
+    viewportMarker.setAttribute("aria-hidden", "true");
+    indicators.append(viewportMarker);
     const toolbar = element("div", "toolbar");
     toolbar.setAttribute("role", "group");
     toolbar.setAttribute("aria-label", "Mark up selected text");
@@ -430,11 +441,13 @@
     let view = "all";
     let pending = null;
     let open = false;
+    let mode = "inline";
+    let modeChosen = false;
     let resolved = false;
     let layoutFrame = 0;
     let revealFrame = 0;
     let lastScroll;
-    let removing = false;
+    let armedDelete;
     let busy = false;
     let readVersion = 0;
     let refreshPending = false;
@@ -443,6 +456,46 @@
     let refreshTimer = 0;
     let statusTimer = 0;
     let selection = null;
+
+    function modeSwitch() {
+      const group = element("div", "modes");
+      group.setAttribute("role", "group");
+      group.setAttribute("aria-label", "Notes mode");
+      for (const [value, label] of [["inline", "Inline"], ["fixed", "Fixed"]]) {
+        const option = button(label, () => chooseMode(value), "", `mode-${value}`);
+        option.dataset.mode = value;
+        group.append(option);
+      }
+      return group;
+    }
+
+    function markMode(group) {
+      for (const option of group.children) option.setAttribute("aria-pressed", String(option.dataset.mode === mode));
+    }
+
+    async function restoreMode() {
+      try {
+        if (await storage.readMode?.() === "fixed" && !signal.aborted && !modeChosen) {
+          mode = "fixed";
+          render(undefined, true);
+        }
+      } catch {
+        // The default still works when the browser blocks storage.
+      }
+    }
+
+    async function chooseMode(next) {
+      modeChosen = true;
+      if (mode !== next) {
+        mode = next;
+        render(`mode-${next}`, true);
+      }
+      try {
+        await storage.writeMode(next);
+      } catch {
+        if (!signal.aborted && mode === next) announce("Couldn’t remember the notes mode.");
+      }
+    }
 
     function validNotes(stored) {
       if (!Array.isArray(stored)) throw new Error("Invalid notes");
@@ -622,7 +675,6 @@
       if (view !== nextView || anchor) {
         if (nextView === "new") drafts.delete("new");
         resolved = false;
-        removing = false;
       }
       open = true;
       view = nextView;
@@ -633,7 +685,6 @@
     function close() {
       view = "all";
       pending = null;
-      removing = false;
       resolved = false;
       open = false;
       drafts.delete("new");
@@ -655,8 +706,15 @@
       const parent = match.range.startContainer.parentElement;
       parent.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
       const rect = match.range.getClientRects()[0];
-      if (rect) window.scrollBy({ top: rect.top - window.innerHeight / 2, behavior: "instant" });
+      const bottom = compact.matches && !panel.hidden ? panel.getBoundingClientRect().top : innerHeight;
+      if (rect) window.scrollBy({ top: rect.top - bottom / 2, behavior: "instant" });
       queueLayout();
+    }
+
+    function openFromMarker(note) {
+      // Open first so a sidebar reflow or inline thread is included in the scroll geometry.
+      show(note.id, null, `note-${note.id}`);
+      jump(note);
     }
 
     async function copyLink(note) {
@@ -739,7 +797,7 @@
     }
 
     function inlineTarget(match) {
-      if (!compact.matches || !match) return null;
+      if (mode === "fixed" || !compact.matches || !match) return null;
       const end = match.range.endContainer;
       const parent = end.nodeType === Node.ELEMENT_NODE ? end : end.parentElement;
       const block = parent?.closest("p, h1, h2, h3, h4, h5, h6, blockquote, pre");
@@ -750,11 +808,14 @@
     }
 
     function render(focus, reveal = false) {
+      armedDelete?.cancel();
       launcherLabel.textContent = notes.length ? `Show notes · ${notes.length}` : "Show notes";
       const focused = inlineRoot.activeElement || ui.activeElement;
       focus ??= focused?.dataset.focusKey;
       const previous = cards.get(view);
       const commentScroll = previous?.querySelector(".comment-list")?.scrollTop || 0;
+      const sidebarScroll = railViewport.scrollTop;
+      const wasFixed = panel.dataset.mode === "fixed";
       const caret = focused?.tagName === "TEXTAREA" ? [focused.selectionStart, focused.selectionEnd] : null;
       const current = notes.find(note => note.id === view);
       const selected = current || (pending && { id: "new", anchor: pending, comments: [] });
@@ -767,12 +828,19 @@
         if (target.nextElementSibling !== inline) target.after(inline);
       } else inline.remove();
       panel.hidden = !open || Boolean(target);
+      panel.dataset.mode = mode;
+      indicators.dataset.sidebar = panel.hidden ? "closed" : "open";
+      markMode(sidebarModes);
       root.toggleAttribute(railAttribute, !panel.hidden && !compact.matches);
-      if (panel.hidden) lastScroll = undefined;
+      if (panel.hidden || mode === "fixed" || compact.matches) {
+        lastScroll = undefined;
+        track.style.height = "";
+      }
       launcher.hidden = open;
       launcher.setAttribute("aria-expanded", String(open));
       notice.replaceChildren();
       track.replaceChildren();
+      queueLayout();
       if (!open) return;
 
       if (!persistent) notice.append(element("p", "notice", "Changes last until you reload."));
@@ -785,10 +853,10 @@
         ordered.sort((a, b) => (passage(a.id)?.from ?? Infinity) - (passage(b.id)?.from ?? Infinity) || 0);
         if (!ordered.length) track.append(element("p", "notice", "Select text on the page to add a highlight or comment."));
         for (const note of ordered) track.append(noteCard(note, note.id === view));
+        if (mode === "fixed") railViewport.scrollTop = wasFixed ? sidebarScroll : 0;
       }
       const list = cards.get(view)?.querySelector(".comment-list");
       if (list) list.scrollTop = commentScroll;
-      queueLayout();
       const surface = target ? inlineRoot : panel;
       const control = Array.from(surface.querySelectorAll("[data-focus-key]"))
         .find(item => item.dataset.focusKey === focus)
@@ -848,8 +916,11 @@
       title.append(disclosure);
       heading.append(title);
       if (expanded && match && note.id !== "new") {
-        const jumpButton = iconButton("Jump to passage", "jump", () => jump(note));
-        jumpButton.hidden = true;
+        const jumpButton = iconButton("Jump to passage", "jump", () => {
+          jump(note);
+          if (mode === "inline" && ui.activeElement === jumpButton) disclosure.focus({ preventScroll: true });
+        });
+        jumpButton.hidden = mode === "inline";
         jumpButton.dataset.jump = "";
         heading.append(jumpButton);
       }
@@ -862,8 +933,47 @@
       return card;
     }
 
+    function deleteButton(label, glyph, action, key) {
+      const prompt = `Activate again to ${label.toLowerCase()}`;
+      let timer;
+      const cancel = () => {
+        clearTimeout(timer);
+        control.removeAttribute("data-confirm-delete");
+        control.setAttribute("aria-label", label);
+        control.title = label;
+        armedDelete = undefined;
+      };
+      const control = iconButton(label, glyph, () => {
+        if (busy) return;
+        if (armedDelete?.control === control && performance.now() < armedDelete.until) {
+          cancel();
+          void action();
+          return;
+        }
+        armedDelete?.cancel();
+        const timeout = 3000;
+        armedDelete = { control, cancel, until: performance.now() + timeout };
+        control.setAttribute("data-confirm-delete", "");
+        control.setAttribute("aria-label", prompt);
+        control.title = prompt;
+        timer = setTimeout(cancel, timeout);
+      }, key);
+      control.addEventListener("keydown", event => {
+        if (event.repeat && (event.key === "Enter" || event.key === " ")) event.preventDefault();
+      });
+      control.addEventListener("blur", () => {
+        if (armedDelete?.control === control) cancel();
+      });
+      return control;
+    }
+
     function renderThread(thread, note) {
       const tools = element("div", "thread-tools");
+      if (panel.hidden) {
+        const modes = modeSwitch();
+        markMode(modes);
+        tools.append(modes);
+      }
       const done = note.comments.filter(comment => comment.resolved).length;
       if (!done) resolved = false;
       if (done) {
@@ -885,26 +995,18 @@
       if (note.id !== "new") {
         const actions = element("div", "note-actions");
         if (attached.has(note.id)) actions.append(iconButton("Copy text link", "link", () => copyLink(note)));
-        actions.append(iconButton(note.comments.length ? "Remove note" : "Remove highlight", "trash", () => {
-          removing = true;
-          render("confirm");
-        }, "remove"));
-        tools.append(actions);
-      }
-      if (tools.childElementCount) thread.append(tools);
-      if (note.id !== "new" && !attached.has(note.id)) thread.append(element("p", "notice", "Text unavailable"));
-      if (removing) {
-        const confirm = element("div", "confirm");
-        confirm.append(button(note.comments.length ? "Delete note and comments" : "Delete highlight", async () => {
+        actions.append(deleteButton(note.comments.length ? "Delete note and comments" : "Delete highlight", "trash", async () => {
           if (!await change(items => items.filter(item => item.id !== note.id))) return;
           drafts.delete(note.id);
           if (open && view === note.id) {
             if (panel.hidden) close();
             else show("all");
           } else render();
-        }, "danger", "confirm"), button("Cancel", () => { removing = false; render("remove"); }));
-        thread.append(confirm);
+        }, "remove"));
+        tools.append(actions);
       }
+      if (tools.childElementCount) thread.append(tools);
+      if (note.id !== "new" && !attached.has(note.id)) thread.append(element("p", "notice", "Text unavailable"));
       const list = element("div", "comment-list");
       const comments = note.comments.filter(comment => Boolean(comment.resolved) === resolved);
       for (const [i, comment] of comments.entries()) {
@@ -914,7 +1016,7 @@
         actions.append(
           iconButton(comment.resolved ? "Reopen comment" : "Resolve comment", comment.resolved ? "reopen" : "resolve",
             () => updateComment(note.id, comment.id, "resolve", nextId), `resolve-${comment.id}`),
-          iconButton("Delete comment", "delete", () => updateComment(note.id, comment.id, "delete", nextId), `delete-${comment.id}`)
+          deleteButton("Delete comment", "delete", () => updateComment(note.id, comment.id, "delete", nextId), `delete-${comment.id}`)
         );
         row.append(element("p", "", comment.body), actions);
         list.append(row);
@@ -973,16 +1075,74 @@
         rect.bottom > top && rect.top < bottom && rect.right > left && rect.left < right);
     }
 
+    function layoutIndicators(pageHeight, pageScroll) {
+      const threads = notes.filter(note => note.comments.length && attached.has(note.id));
+      indicators.hidden = !threads.length || pageHeight <= innerHeight;
+      if (indicators.hidden) return;
+
+      const buckets = new Map();
+      const step = 24;
+      const slots = Math.max(1, Math.floor(indicators.clientHeight / step));
+      for (const note of threads) {
+        const match = attached.get(note.id);
+        const rect = Array.from(match.range.getClientRects()).find(rect => rect.width && rect.height);
+        if (!rect) continue;
+        const fraction = Math.min(1, Math.max(0, (rect.top + pageScroll) / pageHeight));
+        const slot = Math.min(slots - 1, Math.floor(fraction * slots));
+        if (!buckets.has(slot)) buckets.set(slot, []);
+        buckets.get(slot).push({ note, offset: match.from });
+      }
+      for (const [slot, marker] of markers) {
+        if (buckets.has(slot)) continue;
+        marker.remove();
+        markers.delete(slot);
+      }
+      let previous = viewportMarker;
+      for (const slot of [...buckets.keys()].sort((a, b) => a - b)) {
+        const group = buckets.get(slot);
+        group.sort((a, b) => a.offset - b.offset);
+        const active = group.findIndex(({ note }) => note.id === view);
+        const { note } = group[(active + 1) % group.length];
+        const quote = note.anchor.exact.length > 80 ? `${note.anchor.exact.slice(0, 80)}…` : note.anchor.exact;
+        const label = group.length === 1 ? `Jump to comment on “${quote}”`
+          : `${group.length} nearby threads. Jump to “${quote}”`;
+        let marker = markers.get(slot);
+        if (!marker) {
+          marker = button("", () => {
+            const selected = notes.find(note => note.id === marker.dataset.note);
+            if (selected) openFromMarker(selected);
+          }, "indicator");
+          marker.removeAttribute("data-focus-key");
+          markers.set(slot, marker);
+        }
+        marker.dataset.note = note.id;
+        marker.toggleAttribute("data-group", group.length > 1);
+        if (active !== -1) marker.setAttribute("aria-current", "true");
+        else marker.removeAttribute("aria-current");
+        marker.setAttribute("aria-label", label);
+        marker.title = label;
+        marker.style.top = `${100 * (slot + 0.5) / slots}%`;
+        if (previous.nextElementSibling !== marker) previous.after(marker);
+        previous = marker;
+      }
+      indicators.hidden = !buckets.size;
+      viewportMarker.style.top = `${100 * pageScroll / pageHeight}%`;
+      viewportMarker.style.height = `${100 * innerHeight / pageHeight}%`;
+    }
+
     function queueLayout() {
-      if (layoutFrame || panel.hidden) return;
+      if (layoutFrame) return;
       layoutFrame = requestAnimationFrame(() => {
         layoutFrame = 0;
+        const pageScroll = window.scrollY;
+        const pageHeight = document.scrollingElement?.scrollHeight ?? root.scrollHeight;
+        layoutIndicators(pageHeight, pageScroll);
         if (panel.hidden) return;
+        if (mode === "fixed") return;
         const headerBottom = railViewport.getBoundingClientRect().top;
         const bounds = panel.getBoundingClientRect();
         const right = compact.matches ? innerWidth : bounds.left;
         const bottom = compact.matches ? bounds.top : innerHeight;
-        const pageScroll = window.scrollY;
         const entries = [];
         for (const [id, card] of cards) {
           const range = passage(id)?.range;
@@ -1013,7 +1173,7 @@
           minimumTop += entry.height + gap;
         }
         for (const {card, top} of entries) card.style.top = `${top}px`;
-        track.style.height = `${Math.max(nextTop, document.documentElement.scrollHeight - innerHeight + railViewport.clientHeight)}px`;
+        track.style.height = `${Math.max(nextTop, pageHeight - innerHeight + railViewport.clientHeight)}px`;
         if (lastScroll !== pageScroll) railViewport.scrollTop = pageScroll;
         lastScroll = pageScroll;
       });
@@ -1042,7 +1202,7 @@
     installStyle(document, `
       :root[${railAttribute}] { padding-right: clamp(305px, 32vw, 410px) !important; }
     `);
-    ui.append(toolbar, panel, status, launcher);
+    ui.append(toolbar, indicators, panel, status, launcher);
     document.body.append(host);
     if (extensionStorage) document.dispatchEvent(new Event(extensionStateEvent));
     if (canHighlight) {
@@ -1060,6 +1220,8 @@
       `);
     }
     storage.subscribe(refreshNotes);
+    markMode(sidebarModes);
+    void restoreMode();
     void refreshNotes();
     updateToolbar();
 
@@ -1092,7 +1254,8 @@
       if (event.key !== "Escape" || event.defaultPrevented) return;
       const path = event.composedPath();
       if (open && (path.includes(host) || path.includes(inline))) {
-        if (view === "all") close();
+        if (armedDelete) armedDelete.cancel();
+        else if (view === "all") close();
         else collapse(view);
       }
       else if (!toolbar.hidden) hideToolbar();
@@ -1150,6 +1313,7 @@
       inline.remove();
       clearTimeout(refreshTimer);
       clearTimeout(statusTimer);
+      armedDelete?.cancel();
       if (canHighlight) {
         for (const name of [markName, commentName, activeName, `${activeName}-thread`]) CSS.highlights.delete(name);
       }
@@ -1176,6 +1340,7 @@
       --accent: #efcf6a;
       --accent-ink: #282112;
       --danger: #a12d26;
+      --rail-width: clamp(305px, 32vw, 410px);
       --shadow: 0 4px 16px #25211226;
       color: var(--ink);
       font: 14px/1.45 Inter, system-ui, sans-serif;
@@ -1228,7 +1393,7 @@
     .logo { object-fit: contain; flex: none; }
     .panel {
       inset: 0 0 0 auto;
-      width: clamp(305px, 32vw, 410px);
+      width: var(--rail-width);
       display: flex;
       flex-direction: column;
       background: var(--rail);
@@ -1237,9 +1402,40 @@
     header { display: flex; align-items: center; gap: 7px; padding: 7px 10px; border-bottom: 1px solid var(--line); }
     h2 { margin: 0; font-size: 14px; }
     header .count { margin-inline-end: auto; }
+    .modes { display: flex; flex: none; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 6px; }
+    .modes button { min-height: 24px; padding: 2px 7px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 12px; }
+    .modes button:hover, .modes [aria-pressed="true"] { background: var(--hover); color: var(--ink); }
+    .indicators { position: absolute; inset: 18px max(0px, env(safe-area-inset-right)) 60px auto; width: 24px; z-index: 1; }
+    .indicators[data-sidebar="open"] { right: var(--rail-width); }
+    .indicators::before, .viewport-marker {
+      position: absolute;
+      inset-inline-start: 10px;
+      width: 4px;
+      border-radius: 3px;
+      pointer-events: none;
+    }
+    .indicators::before { content: ""; inset-block: 0; background: var(--line); }
+    .viewport-marker { background: var(--muted); opacity: .6; }
+    .indicator {
+      position: absolute;
+      inset-inline-start: 0;
+      width: 24px;
+      height: 24px;
+      min-height: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      pointer-events: auto;
+      transform: translateY(-50%);
+    }
+    .indicator::before { content: ""; display: block; margin: auto; width: 10px; height: 3px; border-radius: 3px; background: var(--rule); }
+    .indicator:hover { background: transparent; }
+    .indicator:hover::before, .indicator[aria-current="true"]::before { width: 14px; height: 5px; }
+    .indicator[data-group]::before { box-shadow: 0 4px var(--rule); }
     .rail-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
     .rail-track { position: relative; }
     .rail-track .note { position: absolute; inset-inline: 0; }
+    .panel[data-mode="fixed"] .note { position: static; }
     .note { overflow: hidden; background: var(--paper); border-block: 1px solid var(--line); }
     :host(local-text-notes-inline) .note { border: 1px solid var(--line); border-radius: 6px; }
     .note[data-open] { border-color: var(--rule); }
@@ -1267,11 +1463,10 @@
     .note-heading > .icon { margin-inline-end: 4px; }
     .thread { border-top: 1px solid var(--line); }
     .thread-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 3px 7px 0; }
-    .note-actions, .filters, .confirm { display: flex; align-items: center; gap: 2px; }
+    .note-actions, .filters { display: flex; align-items: center; gap: 2px; }
     .note-actions { margin-inline-start: auto; }
     .filter { min-height: 27px; padding: 2px 6px; border-color: transparent; background: transparent; color: var(--muted); font-size: 12px; }
     .filter[aria-pressed="true"] { border-color: var(--line); background: var(--hover); color: var(--ink); }
-    .confirm { padding: 4px 8px; flex-wrap: wrap; }
     .notice { margin: 0; padding: 6px 10px; color: var(--muted); font-size: 12px; }
     .comment-list { max-height: min(240px, 32dvh); overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
     .comment { padding: 4px 8px 3px 10px; font-size: 13px; }
@@ -1296,10 +1491,11 @@
     .primary { background: var(--accent); color: var(--accent-ink); font-size: 13px; font-weight: 650; }
     .primary:hover { background: #f6db8b; }
     .primary:disabled { background: transparent; color: var(--muted); }
-    .danger { color: var(--danger); }
+    .icon[data-confirm-delete] { color: var(--danger); background: var(--hover); box-shadow: inset 0 0 0 1px currentColor; }
     .status { bottom: 52px; right: 12px; max-width: calc(100vw - 24px); padding: 6px 10px; font-size: 13px; z-index: 3; }
     @media (max-width: 760px) {
       .panel { inset: auto 0 0; width: auto; max-height: 55dvh; border-inline-start: 0; border-top: 1px solid var(--line); }
+      .indicators[data-sidebar="open"] { right: max(0px, env(safe-area-inset-right)); bottom: calc(55dvh + 12px); }
       .rail-track .note { position: static; }
       .comment-actions .icon { width: 30px; min-height: 30px; }
       .comment-actions .icon:first-child svg { translate: 3px 0; }

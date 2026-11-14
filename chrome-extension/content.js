@@ -1,6 +1,7 @@
 (() => {
   if (globalThis.startLocalTextNotesExtension) return;
   const { siteFor, pageUrl, noteKey, noteRecord, siteKey } = LocalTextNotesSites;
+  const modeKey = "notesMode";
 
   function storageFor(url, signal) {
     const key = noteKey(url);
@@ -8,6 +9,12 @@
     return {
       async read() {
         return (await read()).notes;
+      },
+      async readMode() {
+        return (await chrome.storage.local.get(modeKey))[modeKey];
+      },
+      writeMode(mode) {
+        return chrome.storage.local.set({ [modeKey]: mode });
       },
       async update(transform) {
         let current = await read();
