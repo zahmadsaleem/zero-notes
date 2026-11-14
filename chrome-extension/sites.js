@@ -42,5 +42,17 @@ globalThis.LocalTextNotesSites = (() => {
     return value || { revision: 0, notes: [] };
   }
 
-  return { siteFor, pageUrl, noteKey, noteKeyPrefix, noteRecord, siteKey: "enabledSites" };
+  async function notesForSite(site) {
+    const stored = await chrome.storage.local.get(null);
+    const pages = [];
+    for (const [key, record] of Object.entries(stored)) {
+      if (!key.startsWith(noteKeyPrefix) || !Array.isArray(record?.notes) || !record.notes.length) continue;
+      const url = key.slice(noteKeyPrefix.length);
+      if (siteFor(url)?.id === site.id) pages.push({ url, notes: record.notes });
+    }
+    pages.sort((a, b) => a.url.localeCompare(b.url));
+    return { site: site.id, pages };
+  }
+
+  return { siteFor, pageUrl, noteKey, noteRecord, notesForSite, siteKey: "enabledSites" };
 })();

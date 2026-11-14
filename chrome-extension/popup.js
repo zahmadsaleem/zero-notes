@@ -1,23 +1,15 @@
-const { noteKeyPrefix, siteFor, siteKey } = LocalTextNotesSites;
+const { notesForSite, siteFor, siteKey } = LocalTextNotesSites;
 const siteLabel = document.querySelector("#site");
 const status = document.querySelector("#status");
 const button = document.querySelector("#site-toggle");
 const downloadButton = document.querySelector("#download");
+const cliButton = document.querySelector("#cli");
 let enabled = false;
 
 async function downloadNotes(site) {
   downloadButton.disabled = true;
   try {
-    const stored = await chrome.storage.local.get(null);
-    const pages = [];
-    for (const [key, record] of Object.entries(stored)) {
-      if (!key.startsWith(noteKeyPrefix) || !Array.isArray(record?.notes) || !record.notes.length) continue;
-      const url = key.slice(noteKeyPrefix.length);
-      if (siteFor(url)?.id === site.id) pages.push({ url, notes: record.notes });
-    }
-    pages.sort((a, b) => a.url.localeCompare(b.url));
-
-    const json = JSON.stringify({ site: site.id, pages }, null, 2) + "\n";
+    const json = JSON.stringify(await notesForSite(site), null, 2) + "\n";
     const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
     const name = site.id === "file:///" ? "local-files" : site.label.replace(/[^a-z0-9.-]+/gi, "-");
     const link = document.createElement("a");
@@ -98,3 +90,34 @@ async function start() {
 }
 
 void start().catch(() => { status.textContent = "Could not check this page. Open the extension again to retry."; });
+
+async function cliAction(action) {
+  const result = await chrome.runtime.sendMessage({ type: "cli", action });
+  if (result?.error) throw new Error(result.error);
+  return result.connected;
+}
+
+function showCLI(connected) {
+  cliButton.textContent = connected ? "Disconnect CLI" : "Connect CLI";
+  cliButton.dataset.connected = String(connected);
+  cliButton.hidden = false;
+}
+
+cliButton.addEventListener("click", async () => {
+  const connect = cliButton.dataset.connected !== "true";
+  cliButton.disabled = true;
+  try {
+    if (connect && !await chrome.permissions.request({ permissions: ["nativeMessaging"] })) {
+      status.textContent = "Chrome access was declined.";
+      return;
+    }
+    showCLI(await cliAction(connect ? "connect" : "disconnect"));
+    status.textContent = connect ? "CLI connected. Local commands can read saved notes." : "CLI disconnected.";
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    cliButton.disabled = false;
+  }
+});
+
+void cliAction("status").then(showCLI).catch(() => {});

@@ -11,6 +11,7 @@
     "128": "icons/icon-128.png"
   },
   "permissions": ["activeTab", "scripting", "storage"],
+  "optional_permissions": ["nativeMessaging"],
   "optional_host_permissions": ["https://*/*", "http://*/*", "file:///*"],
   "action": {
     "default_title": "Local Text Notes",

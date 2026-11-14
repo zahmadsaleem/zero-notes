@@ -1,9 +1,11 @@
 importScripts("sites.js");
 
-const { siteFor, pageUrl, noteKey, noteRecord, siteKey } = LocalTextNotesSites;
+const { siteFor, pageUrl, noteKey, noteRecord, notesForSite, siteKey } = LocalTextNotesSites;
 const scriptId = "local-text-notes";
 const contentFiles = ["sites.js", "content.js", "local-text-notes.js"];
 let queue = Promise.resolve();
+let cliPort = null;
+let cliReady = false;
 
 function serialize(task) {
   const result = queue.then(task);
@@ -85,7 +87,10 @@ function reconcile(activateOpenTabs) {
 
 chrome.runtime.onInstalled.addListener(() => reconcile(true));
 chrome.runtime.onStartup.addListener(() => reconcile(true));
-chrome.permissions.onRemoved.addListener(() => reconcile(false));
+chrome.permissions.onRemoved.addListener(permissions => {
+  if (permissions.permissions?.includes("nativeMessaging")) controlCLI("disconnect");
+  if (permissions.origins?.length) reconcile(false);
+});
 
 async function changeSite(message) {
   const site = siteFor(message.site);
@@ -138,7 +143,69 @@ async function writeNotes(message, sender) {
   return { saved: true };
 }
 
+function controlCLI(action) {
+  if (action === "disconnect") {
+    cliPort?.disconnect();
+    cliPort = null;
+    cliReady = false;
+  }
+  if (action !== "connect" || cliPort) return { connected: cliReady };
+
+  return new Promise(resolve => {
+    const port = chrome.runtime.connectNative("com.madsolame.zero_notes");
+    cliPort = port;
+    const timer = setTimeout(() => fail("CLI host timed out. Check the installation and try again."), 5000);
+
+    function fail(error) {
+      clearTimeout(timer);
+      if (cliPort === port) {
+        cliPort = null;
+        cliReady = false;
+      }
+      port.disconnect();
+      resolve({ error });
+    }
+
+    port.onDisconnect.addListener(() => {
+      const error = chrome.runtime.lastError?.message;
+      fail(error?.includes("not found")
+        ? "Native host not found. Run zero-notes install for this browser and extension ID. See the README."
+        : error || "CLI host disconnected.");
+    });
+    port.onMessage.addListener(async message => {
+      if (cliPort !== port) return;
+      if (!cliReady) {
+        if (message?.ready !== true) {
+          fail(message?.error || "Could not start the CLI host.");
+          return;
+        }
+        clearTimeout(timer);
+        cliReady = true;
+        resolve({ connected: true });
+        return;
+      }
+      const site = siteFor(message?.site);
+      let reply = { error: "Use an HTTP(S) site URL or file:///." };
+      if (site) {
+        try {
+          reply = { data: await notesForSite(site) };
+        } catch {
+          reply = { error: "Could not read saved notes." };
+        }
+      }
+      if (cliPort === port) port.postMessage(reply);
+    });
+  });
+}
+
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
+  if (message?.type === "cli" && sender.url === chrome.runtime.getURL("popup.html")) {
+    Promise.resolve().then(() => controlCLI(message.action)).then(
+      respond,
+      error => respond({ error: error.message })
+    );
+    return true;
+  }
   let task;
   if (message?.type === "set-site" && sender.url === chrome.runtime.getURL("popup.html")) {
     task = () => changeSite(message);
