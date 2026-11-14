@@ -20,7 +20,7 @@ import (
 )
 
 const hostName = "com.madsolame.zero_notes"
-const installUsage = "usage: zero-notes install [--browser chrome|arc] [--user-data-dir <path>] <extension-id>"
+const installUsage = "usage: zero-notes install [--user-data-dir <path>] <extension-id>"
 const maxMessage = 16 << 20
 const timeout = 10 * time.Second
 
@@ -53,15 +53,14 @@ func run(args []string, output io.Writer) error {
 	switch args[0] {
 	case "install":
 		flags := flag.NewFlagSet("install", flag.ContinueOnError)
-		browser := flags.String("browser", "chrome", "browser to register with (chrome or arc)")
-		userData := flags.String("user-data-dir", "", "override the browser's user data directory")
+		userData := flags.String("user-data-dir", "", "override Chrome's user data directory")
 		if err := flags.Parse(args[1:]); err != nil {
 			return err
 		}
 		if flags.NArg() != 1 || !extensionID.MatchString(flags.Arg(0)) {
 			return errors.New(installUsage)
 		}
-		return install(*browser, *userData, flags.Arg(0), output)
+		return install(*userData, flags.Arg(0), output)
 	case "list":
 		flags := flag.NewFlagSet("list", flag.ContinueOnError)
 		site := flags.String("site", "", "site URL")
@@ -78,26 +77,20 @@ func run(args []string, output io.Writer) error {
 	}
 }
 
-func install(browser, userData, id string, output io.Writer) error {
-	if browser != "chrome" && browser != "arc" {
-		return fmt.Errorf("unsupported browser %q", browser)
+func chromeUserDataDir(config string) string {
+	if runtime.GOOS == "darwin" {
+		return filepath.Join(config, "Google", "Chrome")
 	}
-	if browser == "arc" && runtime.GOOS != "darwin" {
-		return errors.New("Arc installation is available on macOS")
-	}
+	return filepath.Join(config, "google-chrome")
+}
+
+func install(userData, id string, output io.Writer) error {
 	config, err := os.UserConfigDir()
 	if err != nil {
 		return err
 	}
 	if userData == "" {
-		switch {
-		case browser == "arc":
-			userData = filepath.Join(config, "Arc", "User Data")
-		case runtime.GOOS == "darwin":
-			userData = filepath.Join(config, "Google", "Chrome")
-		default:
-			userData = filepath.Join(config, "google-chrome")
-		}
+		userData = chromeUserDataDir(config)
 	}
 	userData, err = filepath.Abs(userData)
 	if err != nil {
@@ -106,12 +99,12 @@ func install(browser, userData, id string, output io.Writer) error {
 	info, err := os.Stat(userData)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("browser user data directory %q is missing. Open the browser first or pass --user-data-dir", userData)
+			return fmt.Errorf("Chrome user data directory %q is missing. Open Chrome first or pass --user-data-dir", userData)
 		}
-		return fmt.Errorf("check browser user data directory: %w", err)
+		return fmt.Errorf("check Chrome user data directory: %w", err)
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("browser user data path %q is not a directory", userData)
+		return fmt.Errorf("Chrome user data path %q is not a directory", userData)
 	}
 
 	executable, err := os.Executable()
@@ -144,7 +137,7 @@ func install(browser, userData, id string, output io.Writer) error {
 	}); err != nil {
 		return fmt.Errorf("register native host: %w", err)
 	}
-	_, err = fmt.Fprintf(output, "Helper: %s\nRegistration: %s\nOpen Zero Notes in the same browser profile and click Connect CLI.\n", binaryPath, manifestPath)
+	_, err = fmt.Fprintf(output, "Helper: %s\nRegistration: %s\nOpen Zero Notes in the same Chrome profile and click Connect CLI.\n", binaryPath, manifestPath)
 	return err
 }
 

@@ -169,7 +169,7 @@ function controlCLI(action) {
     port.onDisconnect.addListener(() => {
       const error = chrome.runtime.lastError?.message;
       fail(error?.includes("not found")
-        ? "Native host not found. Run zero-notes install for this browser and extension ID. See the README."
+        ? "Native host not found. Run zero-notes install with this Chrome extension ID. See the README."
         : error || "CLI host disconnected.");
     });
     port.onMessage.addListener(async message => {

@@ -21,17 +21,15 @@ go build -o zero-notes ./cli
 ./zero-notes install EXTENSION_ID
 ```
 
-For a custom browser data directory, find **Profile Path** at `chrome://version` and pass its parent with `--user-data-dir`. The installer also has an Arc registration option on macOS, `./zero-notes install --browser arc EXTENSION_ID`, using the ID from `arc://extensions`. The live connection has been verified in Chrome.
-
-The installer copies the helper to your application config directory and prints the registration path. If **Connect CLI** is missing, reload the existing extension from its extensions card so it keeps the same ID. Click **Connect CLI** in the popup and approve Native Messaging.
+The installer registers the helper with Chrome and prints the registration path. If **Connect CLI** is missing, reload the extension from its card at `chrome://extensions`. Then click **Connect CLI** in the popup and approve Native Messaging.
 
 ```sh
 ./zero-notes list --site https://example.com
 ```
 
-Zero Notes reads saved notes through its extension API and returns JSON for the requested site. During a connection, processes running as your OS user can query notes for any site by passing its URL. The original pages can be closed. Connect one browser profile at a time. Click **Disconnect CLI** to turn off access. The connection starts off each time the browser opens.
+Zero Notes reads saved notes through its extension API and returns JSON for the requested site. During a connection, processes running as your OS user can query notes for any site by passing its URL. The original pages can be closed. Connect one Chrome profile at a time. Click **Disconnect CLI** to turn off access. The connection starts off each time Chrome opens.
 
-If the popup says **Native host not found**, check that the installer used the same browser and extension ID. For a custom profile, compare the printed registration path with the browser’s version page. If the registration is correct, fully quit and reopen the browser before reconnecting.
+If Chrome uses a custom data directory, find **Profile Path** at `chrome://version` and run `./zero-notes install --user-data-dir "/path/to/user-data" EXTENSION_ID` with the parent of that path. If the popup says **Native host not found**, check the printed registration path and extension ID. Then fully quit and reopen Chrome before reconnecting.
 
 ## Embed in HTML
 

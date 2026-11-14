@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func TestInstallRegistersOnlySelectedBrowser(t *testing.T) {
+func TestInstallRegistersOnlySelectedChromeDirectory(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "config"))
@@ -60,9 +60,8 @@ func TestInstallRegistersOnlySelectedBrowser(t *testing.T) {
 			t.Errorf("%s permissions = %o, want %o", file.path, info.Mode().Perm(), file.mode)
 		}
 	}
-	for _, dir := range []string{"Google", "google-chrome", "Arc", "Chromium"} {
-		if _, err := os.Stat(filepath.Join(config, dir)); !os.IsNotExist(err) {
-			t.Errorf("installer touched unselected browser %s: %v", dir, err)
-		}
+	defaultChrome := filepath.Join(chromeUserDataDir(config), "NativeMessagingHosts")
+	if _, err := os.Stat(defaultChrome); !os.IsNotExist(err) {
+		t.Errorf("installer touched the default Chrome directory: %v", err)
 	}
 }
