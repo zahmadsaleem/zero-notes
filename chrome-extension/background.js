@@ -111,9 +111,12 @@ async function restoreRegistration(activateOpenTabs) {
   if (sites.length !== stored.length) await chrome.storage.local.set({ [siteKey]: sites });
   const frames = await embeddedFrames();
   const grantedFrames = {};
-  for (const id of sites) {
+  // A site toggled off with the shortcut can still have granted frame access.
+  for (const [id, patterns] of Object.entries(frames)) {
+    const site = siteFor(id);
+    if (!site || (!sites.includes(id) && !(await hasAccess(site)))) continue;
     const granted = [];
-    for (const pattern of frames[id] || []) {
+    for (const pattern of patterns) {
       if (await chrome.permissions.contains({ origins: [pattern] })) granted.push(pattern);
     }
     if (granted.length) grantedFrames[id] = granted;
@@ -150,16 +153,21 @@ async function changeSite(message) {
     await pendingAccess.remove(enableRequestPrefix + site.id);
     const remaining = stored.filter(id => id !== site.id);
     const { [site.id]: released = [], ...remainingFrames } = frames;
-    await chrome.storage.local.set({ [siteKey]: remaining, [embeddedKey]: remainingFrames });
+    await chrome.storage.local.set({
+      [siteKey]: remaining,
+      [embeddedKey]: message.keepAccess ? frames : remainingFrames
+    });
     try {
       await registerFor(remaining);
     } finally {
-      const kept = new Set(await matchPatterns(remaining));
-      const unused = [site.pattern, ...released].filter(pattern => !kept.has(pattern));
-      if (unused.length) {
-        await chrome.permissions.remove({ origins: unused }).catch(error => {
-          console.warn("Zero Notes could not release site access:", error.message);
-        });
+      if (!message.keepAccess) {
+        const kept = new Set(await matchPatterns([...remaining, ...Object.keys(remainingFrames)]));
+        const unused = [site.pattern, ...released].filter(pattern => !kept.has(pattern));
+        if (unused.length) {
+          await chrome.permissions.remove({ origins: unused }).catch(error => {
+            console.warn("Zero Notes could not release site access:", error.message);
+          });
+        }
       }
     }
     return {};
@@ -225,6 +233,36 @@ async function requestSiteEnable(message) {
   if (request?.requestId === message.requestId) await pendingAccess.remove(key);
   return { ...activated, enabled: true };
 }
+
+function toggleFromShortcut(tab) {
+  const site = siteFor(tab?.url);
+  if (!site) return;
+  // permissions.request needs the shortcut's user gesture, so it must start before any await.
+  const request = chrome.permissions.request({ origins: [site.pattern] });
+  void (async () => {
+    if (!(await enabledSites()).includes(site.id) && !(await hasAccess(site))) {
+      const granted = await request.catch(() => null);
+      // Some browsers only show the access prompt from the popup, so fall back to it for new sites.
+      if (granted === null) await chrome.action.openPopup?.({ windowId: tab.windowId });
+      if (!granted) return;
+    } else {
+      request.catch(() => {});
+    }
+    await serialize(async () => {
+      if ((await enabledSites()).includes(site.id)) {
+        // Keep the site's access so the shortcut can turn notes back on without another prompt.
+        await changeSite({ site: site.id, enabled: false, keepAccess: true, tabId: tab.id });
+      } else if (await hasAccess(site)) {
+        const { reload } = await changeSite({ site: site.id, enabled: true, tabId: tab.id });
+        if (reload) await chrome.tabs.reload(tab.id);
+      }
+    });
+  })().catch(error => console.error("Zero Notes:", error));
+}
+
+chrome.commands.onCommand.addListener((command, tab) => {
+  if (command === "toggle-notes") toggleFromShortcut(tab);
+});
 
 async function writeNotes(message, sender) {
   const url = pageUrl(message.url);

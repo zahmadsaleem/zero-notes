@@ -22,6 +22,12 @@
       "32": "icons/icon-32.png"
     }
   },
+  "commands": {
+    "toggle-notes": {
+      "suggested_key": { "default": "Alt+Shift+N" },
+      "description": "Turn notes on or off for the current site"
+    }
+  },
   "background": {
     "service_worker": "background.js"
   }

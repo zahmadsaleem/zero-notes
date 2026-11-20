@@ -10,7 +10,7 @@ Highlight text and leave comments. Notes stay in your browser.
 
 ## Chrome extension
 
-After installing, open Zero Notes on a page you want to annotate. Click **Enable** and approve access for that site. Saved highlights appear automatically on enabled sites.
+After installing, open Zero Notes on a page you want to annotate. Click **Enable** and approve access for that site. Saved highlights appear automatically on enabled sites. Press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> to turn notes on or off for the current site; change the shortcut at `chrome://extensions/shortcuts`.
 
 To try a development build, open `chrome://extensions`, turn on **Developer mode**, choose **Load unpacked**, and select the `chrome-extension/` folder.
 
